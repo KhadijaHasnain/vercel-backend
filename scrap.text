@@ -1,0 +1,221 @@
+TESTING RESULTS:
+{
+  "activities": "1. Debating session: Assign students into groups to debate the ethical and political complexities of prisoner exchanges in conflict zones.\n2. Role-playing: Students act out a UN Security Council meeting to draft resolutions on the Gaza crisis.\n3. Research project: Students research and present on the impacts of climate change policies in their country and how these are being addressed at international conferences like COP 28.\n4. Discussion circles: Groups discuss the impacts of political unrest on civilian populations, drawing from the Iran and Gaza situations.\n5. Health campaign design: Students create awareness campaigns about HIV prevention and the importance of testing, reflecting on the recent surge in Europe.",
+  "in_depth_lecture": "Welcome to today's lecture on current international affairs based on the latest updates from a global news source. We will primarily focus on the ongoing tensions between Israel and Hamas, the political climate in Iran, United States' diplomatic engagements, particularly Vice President Kamala Harris's upcoming participation at COP 28, and a surge in HIV cases in Europe. We will also discuss the humanitarian situation in Gaza, the diplomacy around it, and the role of international organizations such as the United Nations and the World Health Organization in managing crises.",
+  "mcqs": [
+    {
+      "answer": "Vice President Kamala Harris",
+      "options": [
+        "President Joe Biden",
+        "Secretary Antony Blinken",
+        "Vice President Kamala Harris",
+        "Secretary John Kerry"
+      ],
+      "question": "Who is set to represent the United States at the COP 28 conference?"
+    },
+    {
+      "answer": "Release of all Palestinian prisoners in Israel",
+      "options": [
+        "Monetary compensation",
+        "Release of all Palestinian prisoners in Israel",
+        "Termination of embargo on Gaza",
+        "Recognition as a sovereign state"
+      ],
+      "question": "What condition did Hamas set for exchanging Israeli prisoners?"
+    },
+    {
+      "answer": "15 out of 36",
+      "options": [
+        "15 out of 36",
+        "All 36",
+        "Only 3",
+        "None"
+      ],
+      "question": "How many hospitals in Gaza are currently operational according to WHO?"
+    },
+    {
+      "answer": "European Centre for Disease Prevention and Control",
+      "options": [
+        "UNICEF",
+        "European Centre for Disease Prevention and Control",
+        "CDC",
+        "WHO"
+      ],
+      "question": "Which organization provided the data regarding the surge in HIV cases in Europe?"
+    },
+    {
+      "answer": "An immediate ceasefire",
+      "options": [
+        "An immediate ceasefire",
+        "International troops in Gaza",
+        "Financial aid to Israel",
+        "Evacuation of all non-Gaza residents"
+      ],
+      "question": "What does the UN resolution draft concerning Gaza request?"
+    }
+  ],
+  "outlines": "1. Introduction to the Israel-Hamas conflict and the current state of affairs including ceasefire negotiations.\n2. Examination of the executions of political opponents in Iran, human rights concerns, and the global response.\n3. Overview of the United States' foreign policy moves, focusing on Vice President Harris’s representation at COP 28 and Secretary of State Blinken's diplomatic visits.\n4. Discussion on Hamas’s position regarding Israeli prisoners and the humanitarian resolution drafted by Arab countries for the UN.\n5. Analysis of the humanitarian crisis in Gaza, the functioning of hospitals, and the risk of infectious diseases.\n6. Brief overview of the surge in HIV cases in Europe and its implications.",
+  "table": "| Focus Area   | Details   |\n|--------------|-----------|\n| Israel-Hamas | Ceasefire negotiations, humanitarian situation, exchange of prisoners.  |\n|Iran | Executions of political opponents, human rights violations. |\n|USA | Vice President's climate conference role, Secretary of State's diplomatic activities. |\n|Gaza Crisis | UN resolution, hospital operations, risk of infectious diseases. |\n|HIV Surge in EU | Significant increase in reported cases post COVID-19 decline. |"
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### scrap code:
+import re
+from exceptions import CustomError
+from pytube import YouTube
+from urllib.parse import urlparse, parse_qs
+from youtube_transcript_api import YouTubeTranscriptApi
+from openai import OpenAI
+from dotenv import load_dotenv
+import json
+import requests
+from bs4 import BeautifulSoup, Comment
+
+
+load_dotenv()
+client = OpenAI()
+
+
+system_message_video = """
+You will take on a role of a teacher and build a lesson plan based on the Yotube video you are provided with. \
+The lesson planner must have six sections:
+1- An In-Depth Lecture.
+2- Outlines for understanding the lecture.
+3- A simple MCQs (5 questions) quiz.
+4- A table or something graphic that summarizes the lesson and facilitates study.
+5- Advice on possible educational activities to be carried out.
+
+Return your response in the following JSON format:
+{
+    "in_depth_lecture": "The in-depth lecture goes here",
+    "outlines": "The outlines go here",
+    "mcqs": "The MCQs go here",
+    "table": "A table in markdown format goes here",
+    "activities": "The activities go here"
+}
+"""
+
+system_message_website = """
+You will take on a role of a teacher and build a lesson plan based on the scraped content of a website. \
+The lesson planner must have six sections:
+1- An In-Depth Lecture.
+2- Outlines for understanding the lecture.
+3- A simple MCQs (5 questions) quiz.
+4- A table or something graphic that summarizes the lesson and facilitates study.
+5- Advice on possible educational activities to be carried out.
+
+Return your response in the following JSON format:
+{
+    "in_depth_lecture": "The in-depth lecture goes here",
+    "outlines": "The outlines go here",
+    "mcqs": "The MCQs go here",
+    "table": "A table in markdown format goes here",
+    "activities": "The activities go here"
+}
+"""
+
+def tag_visible(element):
+    if element.parent.name in ['style', 'script', 'head', 'title', 'meta', '[document]']:
+        return False
+    if isinstance(element, Comment):
+        return False
+    return True
+
+def add_line_breaks(text):
+    patterns = [
+        r'(?<=[a-z])\n(?=[A-Z])',  
+        r'(?<=\.)\s(?=[A-Z])',
+        r'(?<=\d)\n(?=[A-Z])',
+        r'(?<=\”)\s(?=[A-Z])',  
+        r'\n\n',
+    ]
+
+    for pattern in patterns:
+        text = re.sub(pattern, "\n", text)
+
+    if text:
+        return text
+    else:
+        return ""
+
+def dynamic_scraper(url):
+    r = requests.get(url)
+    soup = BeautifulSoup(r.text, "html.parser")
+    texts = soup.findAll(string=True)
+    visible_texts = filter(tag_visible, texts)
+    text_content = u" ".join(t.strip() for t in visible_texts)
+    text_with_breaks = add_line_breaks(text_content)
+    if len(text_with_breaks) > 8000:
+        text_with_breaks = text_with_breaks[0:10000]
+    return text_with_breaks
+
+
+def get_video_transcript(youtube_url):
+    url_data = urlparse(youtube_url)
+    query = parse_qs(url_data.query)
+    print(query)
+    video_id = query["v"][0]
+
+    try:
+        transcript_list = YouTubeTranscriptApi.get_transcript(video_id, languages=['it'])
+        transcript_text = ' '.join([item['text'] for item in transcript_list])
+    except Exception as e:
+        raise CustomError("Sorry, the Transcript for this video is not available. Please provide another YouTube video URL.")
+
+    return transcript_text
+    
+
+def get_response_video(transcript):
+    response = client.chat.completions.create(
+        model="gpt-4-1106-preview",
+        messages=[
+            {"role": "system", "content": system_message_video},
+            {"role": "user", "content": transcript},
+        ],
+        response_format={"type": "json_object"},
+    )
+    json_format = json.loads(response.choices[0].message.content)
+    return json_format
+
+
+def get_response_website(url):
+    text = dynamic_scraper(url)
+    response = client.chat.completions.create(
+        model="gpt-4-1106-preview",
+        messages=[
+            {"role": "system", "content": system_message_website},
+            {"role": "user", "content": "Scraped Text: " + text},
+        ],
+        response_format={"type": "json_object"},
+    )
+    json_format = json.loads(response.choices[0].message.content)
+    return json_format
+
+
+def url_validation(url):
+    try:
+        if "youtu.be" in url:
+            m = re.search(r'youtu.be\/([a-zA-Z0-9_-]+)', url)
+            if m:
+                video_id = m.group(1)
+                url = f'https://www.youtube.com/watch?v={video_id}&feature=youtu.be'
+                return "youtube"
+
+        elif "youtube.com" in url:
+            return "youtube"
+        else:
+            return "website"
+    except Exception as e:
+        raise CustomError("Sorry, the video is not available. Please provide a valid YouTube video URL.")
